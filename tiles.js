@@ -5,15 +5,23 @@ const PARAMS = Object.freeze({
   OFFSET_X: 300,
   OFFSET_Y: 50,
   TILE_WIDTH: 150,
-  TILE_HEIGHT: 108,
+  ASPECT: 150/108,
   GRID_COLOR: 0xcccccc
 });
 
+// NB: when adding size adjustment values, derive from TILE_WIDTH
 const objects = {
-  ground:     { assetURL: 'assets/tiles/groundTile_NE.png' },
-  thing:      { assetURL: 'assets/tiles/metalStructureBottom_NE.png' },
-  rock:       { assetURL: 'assets/tiles/rocks_NE.png' },
-  spaceship:  { assetURL: 'assets/tiles/spaceCraft4_NE.png' }
+  ground:      { assetURL: 'assets/tiles/groundTile_NE.png' },
+  metalTile:   { assetURL: 'assets/tiles/metalTile_NE.png' },
+  metalCenter: { assetURL: 'assets/tiles/metalTileConnectCenter_NE.png' },
+  metalCornerT:{ assetURL: 'assets/tiles/metalTileConnectCorner_SW.png' },
+  metalCornerR:{ assetURL: 'assets/tiles/metalTileConnectCorner_NE.png' },
+  metalCornerB:{ assetURL: 'assets/tiles/metalTileConnectCorner_NW.png' },
+  metalCornerL:{ assetURL: 'assets/tiles/metalTileConnectCorner_SE.png' },
+  ground:      { assetURL: 'assets/tiles/groundTile_NE.png' },
+  thing:       { assetURL: 'assets/tiles/metalStructureBottom_NE.png' },
+  rock:        { assetURL: 'assets/tiles/rocks_NE.png' },
+  spaceship:   { assetURL: 'assets/tiles/spaceCraft4_NE.png' }
 }
 
 const app = new PIXI.Application({
@@ -33,7 +41,7 @@ const map = {};
   for (let i=0; i<PARAMS.MAP_ROWS; i++) {
     const row = {};
     for (let j=0; j<PARAMS.MAP_COLS; j++) {
-      row[j] = 'ground';
+      row[j] = ['ground', 'metalCenter'][(i+j)%2];
     }
     map[i] = row;
   }
@@ -41,11 +49,11 @@ const map = {};
 })();
 
 (function drawGrid() {
-  graphics.lineStyle(2, PARAMS.GRID_COLOR);
+  graphics.lineStyle(1.5, PARAMS.GRID_COLOR);
   const x0 = PARAMS.OFFSET_X;
   const y0 = PARAMS.OFFSET_Y;
   const tileW = PARAMS.TILE_WIDTH;
-  const tileH = PARAMS.TILE_HEIGHT;
+  const tileH = PARAMS.TILE_WIDTH/PARAMS.ASPECT;
   for (let i = 0;i<PARAMS.MAP_ROWS+1; i++) {
     graphics.moveTo(
       x0 + 0.5*tileW - i*tileW/2,
@@ -70,26 +78,29 @@ const map = {};
 
 loader.load((loader, resources) => {
   const thing = new PIXI.Sprite(resources.thing.texture);
-  const thing2 = new PIXI.Sprite(resources.thing.texture);
 
   for (let i=0; i<PARAMS.MAP_ROWS; i++) {
     for (let j=0; j<PARAMS.MAP_COLS; j++) {
-      let ground = new PIXI.Sprite(resources.ground.texture);
-      ground.x = PARAMS.OFFSET_X - i*PARAMS.TILE_WIDTH/2 + j*PARAMS.TILE_WIDTH/2;
-      ground.y = PARAMS.OFFSET_Y + i*PARAMS.TILE_HEIGHT/2 + j*PARAMS.TILE_HEIGHT/2;
+      const currentTileKey = map[i][j];
+      const currentTile = objects[currentTileKey];
+      const ground = new PIXI.Sprite(resources[currentTileKey].texture);
+      const tileW = PARAMS.TILE_WIDTH;
+      const tileH = PARAMS.TILE_WIDTH/PARAMS.ASPECT;
+      ground.width = tileW + (currentTile.dW | 0);
+      ground.height = tileH + (currentTile.dH | 0);
+      ground.x = PARAMS.OFFSET_X - i*tileW/2 + j*tileW/2 + (currentTile.dX | 0);
+      ground.y = PARAMS.OFFSET_Y + i*tileH/2 + j*tileH/2 + (currentTile.dY | 0);
       app.stage.addChild(ground);
     }
   }
 
+  thing.width = PARAMS.TILE_WIDTH;
   thing.x = 300;
   thing.y = 85;
-  thing2.x = 395;
-  thing2.y = 135;
 
   app.stage.addChild(graphics);
 
   app.stage.addChild(thing);
-  app.stage.addChild(thing2);
 
   // Listen for frame updates
   app.ticker.add(() => {
